@@ -43,8 +43,8 @@ const Header: React.FC = () => {
           <li><a href="#contact" onClick={(e) => handleSmoothScroll(e, '#contact')}>Contact</a></li>
         </ul>
         <div className="nav-actions">
-          <a href="#" className="btn-login">Login</a>
-          <a href="#" className="btn-signup">Signup</a>
+          <a href="Login" className="btn-login">Login</a>
+          <a href="Signup" className="btn-signup">Signup</a>
         </div>
       </nav>
     </header>

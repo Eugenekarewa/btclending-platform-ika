@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useZkLogin } from './zklogin';
+import { useZkLogin } from '../hooks/useZkLogin';
 
 interface SignupProps {
   onSwitchToLogin?: () => void;

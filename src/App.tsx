@@ -6,6 +6,7 @@ import Login from './Auth/Login';
 import Signup from './Auth/Signup';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import ZkLoginTest from './pages/ZkLoginTest';
 import './index.css';
 
 const App: React.FC = () => {
@@ -61,6 +62,7 @@ const App: React.FC = () => {
             } 
           />
           <Route path="/Dashboard" element={<Dashboard />} />
+          <Route path="/test" element={<ZkLoginTest />} />
           
           {/* Fallback for non-router navigation */}
           <Route path="/app" element={renderCurrentView()} />

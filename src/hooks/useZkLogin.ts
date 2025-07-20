@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { fromB64 } from "@mysten/sui/bcs";
+import { fromB64, toB64 } from "@mysten/sui/bcs";
 import { SuiClient } from "@mysten/sui/client";
 import { SerializedSignature } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
@@ -53,8 +53,15 @@ export function useZkLogin() {
     const storedMaxEpoch = localStorage.getItem('max_epoch');
 
     if (storedEphemeralKey) {
-      const keyPair = Ed25519Keypair.fromSecretKey(fromB64(storedEphemeralKey));
-      setEphemeralKeyPair(keyPair);
+      try {
+        // The stored key is a base64 string from export().privateKey
+        const keyPair = Ed25519Keypair.fromSecretKey(storedEphemeralKey);
+        setEphemeralKeyPair(keyPair);
+      } catch (error) {
+        console.error('Failed to restore ephemeral keypair:', error);
+        // Clear invalid stored key
+        sessionStorage.removeItem('ephemeral_key');
+      }
     }
     if (storedRandomness) {
       setRandomness(storedRandomness);
@@ -150,8 +157,9 @@ export function useZkLogin() {
 
       // Generate ephemeral keypair
       const ephemeral = new Ed25519Keypair();
-      const privateKey = ephemeral.getSecretKey();
-      sessionStorage.setItem('ephemeral_key', privateKey);
+      // Export the private key as base64 for storage
+      const privateKeyBytes = ephemeral.export().privateKey;
+      sessionStorage.setItem('ephemeral_key', privateKeyBytes);
       setEphemeralKeyPair(ephemeral);
 
       // Generate randomness

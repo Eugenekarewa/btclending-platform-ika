@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useZkLogin } from '../hooks/useZkLogin';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SignupProps {
   onSwitchToLogin?: () => void;
@@ -15,19 +16,33 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
     logout,
     jwt,
     zkProof,
-    isLoading 
-  } = useZkLogin();
+    isLoading,
+    isAuthenticated,
+    authenticateWithBackend
+  } = useAuth();
+  
+  const navigate = useNavigate();
   
   const [showSuccess, setShowSuccess] = useState(false);
   const [showWalletInfo, setShowWalletInfo] = useState(false);
   const [proofGenerated, setProofGenerated] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [step, setStep] = useState<'signup' | 'proof' | 'backend'>('signup');
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (walletAddress && jwt) {
       setShowSuccess(true);
       setShowWalletInfo(true);
       setAccountCreated(true);
+      setStep('proof');
       
       // Hide success message after 5 seconds
       setTimeout(() => {
@@ -39,22 +54,47 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
   useEffect(() => {
     if (zkProof) {
       setProofGenerated(true);
+      setStep('backend');
+      // Automatically authenticate with backend after ZK proof
+      handleBackendAuth();
     }
   }, [zkProof]);
 
   const handleGoogleSignup = async () => {
     try {
+      setAuthError(null);
+      setStep('signup');
       await loginWithGoogle();
     } catch (error) {
       console.error('Signup failed:', error);
+      setAuthError('Google signup failed. Please try again.');
     }
   };
 
   const handleGenerateProof = async () => {
     try {
+      setAuthError(null);
       await generateZkProof();
     } catch (error) {
       console.error('ZK proof generation failed:', error);
+      setAuthError('ZK proof generation failed. Please try again.');
+    }
+  };
+
+  const handleBackendAuth = async () => {
+    try {
+      setAuthError(null);
+      await authenticateWithBackend();
+      // After successful signup, redirect to login page with success message
+      navigate('/login', { 
+        state: { 
+          message: 'Account created successfully! Please sign in to continue.',
+          type: 'success'
+        }
+      });
+    } catch (error) {
+      console.error('Backend authentication failed:', error);
+      setAuthError('Account creation failed. Please try again.');
     }
   };
 
@@ -72,6 +112,8 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
     setShowWalletInfo(false);
     setProofGenerated(false);
     setAccountCreated(false);
+    setAuthError(null);
+    setStep('signup');
   };
 
   const truncateAddress = (address: string) => {
@@ -111,6 +153,39 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
           {showSuccess && (
             <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
               🎉 Welcome to BTCLend! Your account has been created successfully!
+            </div>
+          )}
+
+          {/* Error Message */}
+          {authError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
+              ❌ {authError}
+            </div>
+          )}
+
+          {/* Progress Steps */}
+          {(step !== 'signup' || walletAddress) && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between text-sm">
+                <div className={`flex items-center ${step === 'signup' || walletAddress ? 'text-green-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${step === 'signup' || walletAddress ? 'bg-green-400 text-black' : 'bg-white/20'}`}>
+                    {walletAddress ? '✓' : '1'}
+                  </div>
+                  Google Auth
+                </div>
+                <div className={`flex items-center ${step === 'proof' || zkProof ? 'text-green-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${zkProof ? 'bg-green-400 text-black' : step === 'proof' ? 'bg-blue-400 text-black' : 'bg-white/20'}`}>
+                    {zkProof ? '✓' : '2'}
+                  </div>
+                  ZK Proof
+                </div>
+                <div className={`flex items-center ${step === 'backend' ? 'text-blue-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${step === 'backend' ? 'bg-blue-400 text-black' : 'bg-white/20'}`}>
+                    3
+                  </div>
+                  Account Setup
+                </div>
+              </div>
             </div>
           )}
 
@@ -260,12 +335,12 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
             {!accountCreated && (
               <div className="text-center pt-6 border-t border-yellow-400/10">
                 <p className="text-white/60 mb-4">Already have an account?</p>
-                <button
-                  onClick={onSwitchToLogin}
-                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
+                <Link
+                  to="/login"
+                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all inline-block"
                 >
                   Sign In
-                </button>
+                </Link>
               </div>
             )}
           </div>

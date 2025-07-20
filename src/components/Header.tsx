@@ -1,6 +1,10 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header: React.FC = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+
   useEffect(() => {
     const handleScroll = () => {
       const header = document.querySelector('header');
@@ -43,8 +47,32 @@ const Header: React.FC = () => {
           <li><a href="#contact" onClick={(e) => handleSmoothScroll(e, '#contact')}>Contact</a></li>
         </ul>
         <div className="nav-actions">
-          <a href="Login" className="btn-login">Login</a>
-          <a href="Signup" className="btn-signup">Signup</a>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4">
+              <Link to="/dashboard" className="btn-login">Dashboard</Link>
+              <div className="flex items-center gap-2">
+                {user?.picture && (
+                  <img 
+                    src={user.picture} 
+                    alt={user.name} 
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <span className="text-white text-sm">{user?.name}</span>
+                <button 
+                  onClick={logout}
+                  className="btn-signup bg-red-600 hover:bg-red-700"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className="btn-login">Login</Link>
+              <Link to="/signup" className="btn-signup">Signup</Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

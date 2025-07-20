@@ -82,17 +82,21 @@ export function useZkLogin() {
     
     async function fetchWalletAddress(jwtToken: string) {
       try {
-        const response = await fetch('https://btclend-backend.onrender.com/getWalletAddress', {
+        const response = await fetch('http://localhost:5000/api/auth/wallet-address', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ jwt_token: jwtToken }),
+          body: JSON.stringify({ jwt: jwtToken }),
         });
         if (response.ok) {
           const data = await response.json();
-          if (data.walletAddress) {
-            setWalletAddress(data.walletAddress);
+          if (data.success && data.data.walletAddress) {
+            setWalletAddress(data.data.walletAddress);
+            if (data.data.userSalt) {
+              setUserSalt(data.data.userSalt);
+              localStorage.setItem('user_salt', data.data.userSalt);
+            }
           } else {
             // If no walletAddress returned, derive from jwt as fallback
             let salt = localStorage.getItem('user_salt');

@@ -7,16 +7,27 @@ interface SignupProps {
 }
 
 const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
-  const { walletAddress, loginWithGoogle, jwt } = useZkLogin();
-  const [isLoading, setIsLoading] = useState(false);
+  const { 
+    walletAddress, 
+    loginWithGoogle, 
+    generateZkProof,
+    createAndSetWallet,
+    logout,
+    jwt,
+    zkProof,
+    isLoading 
+  } = useZkLogin();
+  
   const [showSuccess, setShowSuccess] = useState(false);
   const [showWalletInfo, setShowWalletInfo] = useState(false);
+  const [proofGenerated, setProofGenerated] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
 
   useEffect(() => {
     if (walletAddress && jwt) {
-      setIsLoading(false);
       setShowSuccess(true);
       setShowWalletInfo(true);
+      setAccountCreated(true);
       
       // Hide success message after 5 seconds
       setTimeout(() => {
@@ -25,14 +36,42 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
     }
   }, [walletAddress, jwt]);
 
+  useEffect(() => {
+    if (zkProof) {
+      setProofGenerated(true);
+    }
+  }, [zkProof]);
+
   const handleGoogleSignup = async () => {
-    setIsLoading(true);
     try {
       await loginWithGoogle();
     } catch (error) {
       console.error('Signup failed:', error);
-      setIsLoading(false);
     }
+  };
+
+  const handleGenerateProof = async () => {
+    try {
+      await generateZkProof();
+    } catch (error) {
+      console.error('ZK proof generation failed:', error);
+    }
+  };
+
+  const handleCreateWallet = async () => {
+    try {
+      await createAndSetWallet();
+    } catch (error) {
+      console.error('Wallet creation failed:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowSuccess(false);
+    setShowWalletInfo(false);
+    setProofGenerated(false);
+    setAccountCreated(false);
   };
 
   const truncateAddress = (address: string) => {
@@ -49,142 +88,186 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onBackToHome }) => {
               onClick={onBackToHome}
               className="flex items-center text-2xl font-bold text-white hover:scale-105 transition-transform"
             >
-              <div className="w-9 h-9 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg flex items-center justify-center text-black font-extrabold text-xl mr-3 shadow-lg shadow-yellow-400/30">
-                $
-              </div>
-              btclend
+              <span className="text-yellow-400 mr-2">₿</span>
+              BTCLend
             </button>
-            <button
-              onClick={onBackToHome}
-              className="text-white/80 hover:text-white hover:bg-white/10 px-4 py-2 rounded-lg border border-white/20 hover:border-yellow-400/30 transition-all"
-            >
-              ← Back to Home
-            </button>
+            
+            {walletAddress && (
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Logout
+              </button>
+            )}
           </div>
         </nav>
       </header>
 
       {/* Main Content */}
-      <div className="flex items-center justify-center min-h-screen px-4 pt-20">
-        <div className="relative">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-transparent to-yellow-400/10 rounded-3xl blur-3xl" />
-          
-          {/* Auth Card */}
-          <div className="relative bg-black/80 backdrop-blur-xl border border-yellow-400/20 rounded-3xl p-8 sm:p-12 w-full max-w-md shadow-2xl">
-            {/* Header */}
+      <div className="pt-20 flex items-center justify-center min-h-screen px-4">
+        <div className="w-full max-w-md">
+          {/* Success Message */}
+          {showSuccess && (
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
+              🎉 Welcome to BTCLend! Your account has been created successfully!
+            </div>
+          )}
+
+          <div className="bg-black/40 backdrop-blur-md rounded-3xl p-8 border border-yellow-500/20 shadow-2xl">
             <div className="text-center mb-8">
-              <div className="flex items-center justify-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center text-black font-extrabold text-2xl mr-4 shadow-lg shadow-yellow-400/30">
-                  $
-                </div>
-                <span className="text-3xl font-bold text-white">btclend</span>
-              </div>
-              <h1 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white via-yellow-400 to-yellow-600 bg-clip-text text-transparent">
-                Join btclend
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Create Account
               </h1>
-              <p className="text-white/70 text-lg leading-relaxed">
-                Create your account and start earning with Bitcoin lending on Sui
+              <p className="text-white/60">
+                Join BTCLend with secure zkLogin authentication
               </p>
             </div>
 
-            {/* Success Message */}
-            {showSuccess && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-green-400 text-center font-medium animate-fade-in">
-                Account created successfully! Welcome to btclend.
-              </div>
-            )}
+            {!accountCreated ? (
+              <div className="space-y-6">
+                <button
+                  onClick={handleGoogleSignup}
+                  disabled={isLoading}
+                  className={`w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/40 flex items-center justify-center text-lg ${
+                    isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3" />
+                      Creating account...
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm mr-3">
+                        G
+                      </div>
+                      Create Account with Google
+                    </>
+                  )}
+                </button>
 
-            {/* Google Signup Button */}
-            <button
-              onClick={handleGoogleSignup}
-              disabled={isLoading}
-              className={`w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/40 flex items-center justify-center text-lg mb-6 ${
-                isLoading ? 'opacity-60 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3" />
-                  Creating account...
-                </>
-              ) : (
-                <>
-                  <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm mr-3">
-                    G
+                {/* Account Creation Benefits */}
+                <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-6">
+                  <h3 className="text-yellow-400 font-semibold mb-3">What you'll get:</h3>
+                  <div className="space-y-2 text-sm text-white/80">
+                    <div className="flex items-center">
+                      <span className="text-green-400 mr-2">✓</span>
+                      Secure wallet powered by Sui blockchain
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-green-400 mr-2">✓</span>
+                      Zero-knowledge proof authentication
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-green-400 mr-2">✓</span>
+                      Access to Bitcoin lending protocols
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-green-400 mr-2">✓</span>
+                      Multi-signature security features
+                    </div>
                   </div>
-                  Sign up with Google
-                </>
-              )}
-            </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Wallet Info */}
+                <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-5 mb-6 animate-fade-in">
+                  <p className="text-white/80 mb-2 font-medium">
+                    <strong>Your New Wallet Address:</strong>
+                  </p>
+                  <div className="font-mono text-sm text-yellow-400 bg-black/30 p-3 rounded-lg break-all">
+                    {walletAddress}
+                  </div>
+                  <div className="text-white/60 text-xs mt-2">
+                    Short: {truncateAddress(walletAddress)}
+                  </div>
+                </div>
 
-            {/* Wallet Info */}
-            {showWalletInfo && walletAddress && (
-              <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-5 mb-6 animate-fade-in">
-                <p className="text-white/80 mb-2 font-medium">
-                  <strong>Your New Wallet Address:</strong>
-                </p>
-                <div className="font-mono text-sm text-yellow-400 bg-black/30 p-3 rounded-lg break-all">
-                  {walletAddress}
-                </div>
-                <div className="text-white/60 text-xs mt-2">
-                  Short: {truncateAddress(walletAddress)}
-                </div>
+                {/* ZK Proof Section */}
+                {!proofGenerated ? (
+                  <button
+                    onClick={handleGenerateProof}
+                    disabled={isLoading}
+                    className={`w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 ${
+                      isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3 inline-block" />
+                        Generating ZK Proof...
+                      </>
+                    ) : (
+                      '🔐 Complete Setup - Generate ZK Proof'
+                    )}
+                  </button>
+                ) : (
+                  <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl text-center">
+                    ✅ Account Setup Complete! You're ready to start lending.
+                  </div>
+                )}
+
+                {/* Next Steps */}
+                {proofGenerated && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5 mt-4">
+                    <h3 className="text-blue-400 font-semibold mb-3">Next Steps:</h3>
+                    <div className="space-y-2 text-sm text-white/80">
+                      <div className="flex items-center">
+                        <span className="text-yellow-400 mr-2">→</span>
+                        Access your dashboard
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-yellow-400 mr-2">→</span>
+                        Connect your Bitcoin wallet
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-yellow-400 mr-2">→</span>
+                        Start exploring lending opportunities
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Features */}
+            {/* Security Features */}
             <div className="space-y-4 mb-8 pt-6 border-t border-yellow-400/10">
+              <h3 className="text-white font-semibold mb-3">🛡️ Security Features</h3>
               <div className="flex items-center">
                 <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-xs mr-4 flex-shrink-0">
-                  🚀
+                  🔐
                 </div>
-                <span className="text-white/80">Get started with Bitcoin lending in minutes</span>
+                <span className="text-white/80">Zero-knowledge proof authentication</span>
               </div>
               <div className="flex items-center">
                 <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-xs mr-4 flex-shrink-0">
-                  💰
+                  ⚡
                 </div>
-                <span className="text-white/80">Earn competitive yields on your Bitcoin</span>
+                <span className="text-white/80">Sui blockchain integration</span>
               </div>
               <div className="flex items-center">
                 <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-xs mr-4 flex-shrink-0">
-                  🌐
+                  🛡️
                 </div>
-                <span className="text-white/80">Access to multi-chain DeFi ecosystem</span>
+                <span className="text-white/80">Non-custodial wallet management</span>
               </div>
-              <div className="flex items-center">
-                <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-xs mr-4 flex-shrink-0">
-                  📊
-                </div>
-                <span className="text-white/80">Advanced analytics and portfolio tracking</span>
-              </div>
-            </div>
-
-            {/* Terms & Privacy */}
-            <div className="text-center mb-6 p-4 bg-yellow-400/5 border border-yellow-400/10 rounded-xl">
-              <p className="text-white/60 text-sm leading-relaxed">
-                By creating an account, you agree to our{' '}
-                <a href="#" className="text-yellow-400 hover:text-yellow-300 underline">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-yellow-400 hover:text-yellow-300 underline">
-                  Privacy Policy
-                </a>
-              </p>
             </div>
 
             {/* Toggle to Login */}
-            <div className="text-center pt-6 border-t border-yellow-400/10">
-              <p className="text-white/60 mb-4">Already have an account?</p>
-              <button
-                onClick={onSwitchToLogin}
-                className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
-              >
-                Sign In
-              </button>
-            </div>
+            {!accountCreated && (
+              <div className="text-center pt-6 border-t border-yellow-400/10">
+                <p className="text-white/60 mb-4">Already have an account?</p>
+                <button
+                  onClick={onSwitchToLogin}
+                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

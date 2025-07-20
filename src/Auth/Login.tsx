@@ -8,14 +8,22 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
-  const { walletAddress, loginWithGoogle, jwt } = useZkLogin();
-  const [isLoading, setIsLoading] = useState(false);
+  const { 
+    walletAddress, 
+    loginWithGoogle, 
+    generateZkProof,
+    logout,
+    jwt,
+    zkProof,
+    isLoading 
+  } = useZkLogin();
+  
   const [showSuccess, setShowSuccess] = useState(false);
   const [showWalletInfo, setShowWalletInfo] = useState(false);
+  const [proofGenerated, setProofGenerated] = useState(false);
 
   useEffect(() => {
     if (walletAddress && jwt) {
-      setIsLoading(false);
       setShowSuccess(true);
       setShowWalletInfo(true);
       
@@ -26,14 +34,33 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
     }
   }, [walletAddress, jwt]);
 
+  useEffect(() => {
+    if (zkProof) {
+      setProofGenerated(true);
+    }
+  }, [zkProof]);
+
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
     try {
       await loginWithGoogle();
     } catch (error) {
       console.error('Login failed:', error);
-      setIsLoading(false);
     }
+  };
+
+  const handleGenerateProof = async () => {
+    try {
+      await generateZkProof();
+    } catch (error) {
+      console.error('ZK proof generation failed:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowSuccess(false);
+    setShowWalletInfo(false);
+    setProofGenerated(false);
   };
 
   const truncateAddress = (address: string) => {
@@ -50,87 +77,102 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
               onClick={onBackToHome}
               className="flex items-center text-2xl font-bold text-white hover:scale-105 transition-transform"
             >
-              <div className="w-9 h-9 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg flex items-center justify-center text-black font-extrabold text-xl mr-3 shadow-lg shadow-yellow-400/30">
-                $
-              </div>
-              btclend
+              <span className="text-yellow-400 mr-2">₿</span>
+              BTCLend
             </button>
-            <button
-              onClick={onBackToHome}
-              className="text-white/80 hover:text-white hover:bg-white/10 px-4 py-2 rounded-lg border border-white/20 hover:border-yellow-400/30 transition-all"
-            >
-              ← Back to Home
-            </button>
+            
+            {walletAddress && (
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Logout
+              </button>
+            )}
           </div>
         </nav>
       </header>
 
       {/* Main Content */}
-      <div className="flex items-center justify-center min-h-screen px-4 pt-20">
-        <div className="relative">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-transparent to-yellow-400/10 rounded-3xl blur-3xl" />
-          
-          {/* Auth Card */}
-          <div className="relative bg-black/80 backdrop-blur-xl border border-yellow-400/20 rounded-3xl p-8 sm:p-12 w-full max-w-md shadow-2xl">
-            {/* Header */}
+      <div className="pt-20 flex items-center justify-center min-h-screen px-4">
+        <div className="w-full max-w-md">
+          {/* Success Message */}
+          {showSuccess && (
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
+              ✅ Successfully logged in with zkLogin!
+            </div>
+          )}
+
+          <div className="bg-black/40 backdrop-blur-md rounded-3xl p-8 border border-yellow-500/20 shadow-2xl">
             <div className="text-center mb-8">
-              <div className="flex items-center justify-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center text-black font-extrabold text-2xl mr-4 shadow-lg shadow-yellow-400/30">
-                  $
-                </div>
-                <span className="text-3xl font-bold text-white">btclend</span>
-              </div>
-              <h1 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white via-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold text-white mb-2">
                 Welcome Back
               </h1>
-              <p className="text-white/70 text-lg leading-relaxed">
-                Sign in to your account and continue your Bitcoin lending journey
+              <p className="text-white/60">
+                Sign in to access your secure wallet
               </p>
             </div>
 
-            {/* Success Message */}
-            {showSuccess && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 text-green-400 text-center font-medium animate-fade-in">
-                Successfully authenticated! Welcome back to btclend.
-              </div>
-            )}
-
-            {/* Google Login Button */}
-            <button
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-              className={`w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/40 flex items-center justify-center text-lg mb-6 ${
-                isLoading ? 'opacity-60 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm mr-3">
-                    G
+            {!walletAddress ? (
+              <button
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+                className={`w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/40 flex items-center justify-center text-lg mb-6 ${
+                  isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-3" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm mr-3">
+                      G
+                    </div>
+                    Sign in with Google
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="space-y-4">
+                {/* Wallet Info */}
+                <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-5 mb-6 animate-fade-in">
+                  <p className="text-white/80 mb-2 font-medium">
+                    <strong>Your Wallet Address:</strong>
+                  </p>
+                  <div className="font-mono text-sm text-yellow-400 bg-black/30 p-3 rounded-lg break-all">
+                    {walletAddress}
                   </div>
-                  Sign in with Google
-                </>
-              )}
-            </button>
+                  <div className="text-white/60 text-xs mt-2">
+                    Short: {truncateAddress(walletAddress)}
+                  </div>
+                </div>
 
-            {/* Wallet Info */}
-            {showWalletInfo && walletAddress && (
-              <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-5 mb-6 animate-fade-in">
-                <p className="text-white/80 mb-2 font-medium">
-                  <strong>Your Wallet Address:</strong>
-                </p>
-                <div className="font-mono text-sm text-yellow-400 bg-black/30 p-3 rounded-lg break-all">
-                  {walletAddress}
-                </div>
-                <div className="text-white/60 text-xs mt-2">
-                  Short: {truncateAddress(walletAddress)}
-                </div>
+                {/* ZK Proof Section */}
+                {!proofGenerated ? (
+                  <button
+                    onClick={handleGenerateProof}
+                    disabled={isLoading}
+                    className={`w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 ${
+                      isLoading ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3 inline-block" />
+                        Generating ZK Proof...
+                      </>
+                    ) : (
+                      '🔐 Generate ZK Proof'
+                    )}
+                  </button>
+                ) : (
+                  <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl text-center">
+                    ✅ ZK Proof Generated Successfully!
+                  </div>
+                )}
               </div>
             )}
 
@@ -157,15 +199,17 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
             </div>
 
             {/* Toggle to Signup */}
-            <div className="text-center pt-6 border-t border-yellow-400/10">
-              <p className="text-white/60 mb-4">Don't have an account?</p>
-              <button
-                onClick={onSwitchToSignup}
-                className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
-              >
-                Create Account
-              </button>
-            </div>
+            {!walletAddress && (
+              <div className="text-center pt-6 border-t border-yellow-400/10">
+                <p className="text-white/60 mb-4">Don't have an account?</p>
+                <button
+                  onClick={onSwitchToSignup}
+                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
+                >
+                  Create Account
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

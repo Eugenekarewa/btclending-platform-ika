@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useZkLogin } from '../hooks/useZkLogin';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 import '../index.css';
 interface LoginProps {
@@ -15,17 +16,43 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
     logout,
     jwt,
     zkProof,
-    isLoading 
-  } = useZkLogin();
+    isLoading,
+    isAuthenticated,
+    authenticateWithBackend
+  } = useAuth();
+  
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const [showSuccess, setShowSuccess] = useState(false);
   const [showWalletInfo, setShowWalletInfo] = useState(false);
   const [proofGenerated, setProofGenerated] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [step, setStep] = useState<'login' | 'proof' | 'backend'>('login');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Check for success message from signup
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the message from location state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   useEffect(() => {
     if (walletAddress && jwt) {
       setShowSuccess(true);
       setShowWalletInfo(true);
+      setStep('proof');
       
       // Hide success message after 5 seconds
       setTimeout(() => {
@@ -37,22 +64,41 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
   useEffect(() => {
     if (zkProof) {
       setProofGenerated(true);
+      setStep('backend');
+      // Automatically authenticate with backend after ZK proof
+      handleBackendAuth();
     }
   }, [zkProof]);
 
   const handleGoogleLogin = async () => {
     try {
+      setAuthError(null);
+      setStep('login');
       await loginWithGoogle();
     } catch (error) {
       console.error('Login failed:', error);
+      setAuthError('Google login failed. Please try again.');
     }
   };
 
   const handleGenerateProof = async () => {
     try {
+      setAuthError(null);
       await generateZkProof();
     } catch (error) {
       console.error('ZK proof generation failed:', error);
+      setAuthError('ZK proof generation failed. Please try again.');
+    }
+  };
+
+  const handleBackendAuth = async () => {
+    try {
+      setAuthError(null);
+      await authenticateWithBackend();
+      // Navigation will be handled by the useEffect above
+    } catch (error) {
+      console.error('Backend authentication failed:', error);
+      setAuthError('Authentication failed. Please try again.');
     }
   };
 
@@ -61,6 +107,8 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
     setShowSuccess(false);
     setShowWalletInfo(false);
     setProofGenerated(false);
+    setAuthError(null);
+    setStep('login');
   };
 
   const truncateAddress = (address: string) => {
@@ -96,10 +144,50 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
       {/* Main Content */}
       <div className="pt-20 flex items-center justify-center min-h-screen px-4">
         <div className="w-full max-w-md">
+          {/* Success Message from Signup */}
+          {successMessage && (
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
+              ✅ {successMessage}
+            </div>
+          )}
+
           {/* Success Message */}
           {showSuccess && (
             <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
               ✅ Successfully logged in with zkLogin!
+            </div>
+          )}
+
+          {/* Error Message */}
+          {authError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl mb-6 text-center animate-fade-in">
+              ❌ {authError}
+            </div>
+          )}
+
+          {/* Progress Steps */}
+          {(step !== 'login' || walletAddress) && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between text-sm">
+                <div className={`flex items-center ${step === 'login' || walletAddress ? 'text-green-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${step === 'login' || walletAddress ? 'bg-green-400 text-black' : 'bg-white/20'}`}>
+                    {walletAddress ? '✓' : '1'}
+                  </div>
+                  Google Auth
+                </div>
+                <div className={`flex items-center ${step === 'proof' || zkProof ? 'text-green-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${zkProof ? 'bg-green-400 text-black' : step === 'proof' ? 'bg-blue-400 text-black' : 'bg-white/20'}`}>
+                    {zkProof ? '✓' : '2'}
+                  </div>
+                  ZK Proof
+                </div>
+                <div className={`flex items-center ${step === 'backend' ? 'text-blue-400' : isAuthenticated ? 'text-green-400' : 'text-white/50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${isAuthenticated ? 'bg-green-400 text-black' : step === 'backend' ? 'bg-blue-400 text-black' : 'bg-white/20'}`}>
+                    {isAuthenticated ? '✓' : '3'}
+                  </div>
+                  Backend
+                </div>
+              </div>
             </div>
           )}
 
@@ -168,9 +256,14 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
                       '🔐 Generate ZK Proof'
                     )}
                   </button>
+                ) : step === 'backend' && !isAuthenticated ? (
+                  <div className="bg-blue-500/10 border border-blue-500/30 text-blue-400 p-4 rounded-xl text-center">
+                    <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto mb-2"></div>
+                    Authenticating with backend...
+                  </div>
                 ) : (
                   <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl text-center">
-                    ✅ ZK Proof Generated Successfully!
+                    ✅ Authentication Complete! Redirecting to dashboard...
                   </div>
                 )}
               </div>
@@ -202,12 +295,12 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onBackToHome }) => {
             {!walletAddress && (
               <div className="text-center pt-6 border-t border-yellow-400/10">
                 <p className="text-white/60 mb-4">Don't have an account?</p>
-                <button
-                  onClick={onSwitchToSignup}
-                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all"
+                <Link
+                  to="/signup"
+                  className="text-yellow-400 hover:text-yellow-300 font-semibold px-4 py-2 rounded-lg border border-yellow-400/20 hover:border-yellow-400/40 hover:bg-yellow-400/10 transition-all inline-block"
                 >
                   Create Account
-                </button>
+                </Link>
               </div>
             )}
           </div>

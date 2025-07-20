@@ -80,71 +80,27 @@ export function useZkLogin() {
     const params = new URLSearchParams(hash);
     const token = params.get('id_token');
     
-    async function fetchWalletAddress(jwtToken: string) {
-      try {
-        const response = await fetch('http://localhost:5000/api/auth/wallet-address', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ jwt: jwtToken }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data.walletAddress) {
-            setWalletAddress(data.data.walletAddress);
-            if (data.data.userSalt) {
-              setUserSalt(data.data.userSalt);
-              localStorage.setItem('user_salt', data.data.userSalt);
-            }
-          } else {
-            // If no walletAddress returned, derive from jwt as fallback
-            let salt = localStorage.getItem('user_salt');
-            if (!salt) {
-              salt = generateRandomness();
-              localStorage.setItem('user_salt', salt);
-            }
-            setUserSalt(salt);
-            const address = jwtToAddress(jwtToken, salt);
-            setWalletAddress(address);
-          }
-        } else {
-          console.error('Failed to fetch wallet address from backend');
-          // Fallback to derive wallet address
-          let salt = localStorage.getItem('user_salt');
-          if (!salt) {
-            salt = generateRandomness();
-            localStorage.setItem('user_salt', salt);
-          }
-          setUserSalt(salt);
-          const address = jwtToAddress(jwtToken, salt);
-          setWalletAddress(address);
-        }
-      } catch (error) {
-        console.error('Error fetching wallet address:', error);
-        // Fallback to derive wallet address
-        let salt = localStorage.getItem('user_salt');
-        if (!salt) {
-          salt = generateRandomness();
-          localStorage.setItem('user_salt', salt);
-        }
-        setUserSalt(salt);
-        const address = jwtToAddress(jwtToken, salt);
-        setWalletAddress(address);
-      }
-    }
+
 
     if (token) {
       try {
         const decodedJwt = jwtDecode(token) as JwtPayload;
         setJwt(token);
 
-        fetchWalletAddress(token);
+        // Always derive wallet address locally for zkLogin
+        let salt = localStorage.getItem('user_salt');
+        if (!salt) {
+          salt = generateRandomness();
+          localStorage.setItem('user_salt', salt);
+        }
+        setUserSalt(salt);
+        const address = jwtToAddress(token, salt);
+        setWalletAddress(address);
 
         // Clear the URL hash to prevent repeated processing
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       } catch (error) {
-        console.error('Failed to decode JWT:', error);
+        console.error('Failed to process JWT:', error);
       }
     }
   }, []);

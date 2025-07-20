@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './Auth/Login';
 import Signup from './Auth/Signup';
 import Home from './pages/Home';
@@ -10,62 +11,42 @@ import ZkLoginTest from './pages/ZkLoginTest';
 import './index.css';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'home' | 'login' | 'signup'>('home');
-
-  const handleSwitchToLogin = () => setCurrentView('login');
-  const handleSwitchToSignup = () => setCurrentView('signup');
-  const handleBackToHome = () => setCurrentView('home');
-
-  // For non-router navigation (if needed)
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case 'login':
-        return (
-          <Login 
-            onSwitchToSignup={handleSwitchToSignup}
-            onBackToHome={handleBackToHome}
-          />
-        );
-      case 'signup':
-        return (
-          <Signup 
-            onSwitchToLogin={handleSwitchToLogin}
-            onBackToHome={handleBackToHome}
-          />
-        );
-      default:
-        return <Home />;
-    }
-  };
-
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Home />} />
-          <Route 
-            path="/Login" 
-            element={
-              <Login 
-                onSwitchToSignup={handleSwitchToSignup}
-                onBackToHome={handleBackToHome}
-              />
-            } 
-          />
-          <Route 
-            path="/Signup" 
-            element={
-              <Signup 
-                onSwitchToLogin={handleSwitchToLogin}
-                onBackToHome={handleBackToHome}
-              />
-            } 
-          />
-          <Route path="/Dashboard" element={<Dashboard />} />
-          <Route path="/test" element={<ZkLoginTest />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           
-          {/* Fallback for non-router navigation */}
-          <Route path="/app" element={renderCurrentView()} />
+          {/* Protected routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Test route (protected) */}
+          <Route 
+            path="/test" 
+            element={
+              <ProtectedRoute>
+                <ZkLoginTest />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Legacy route redirects */}
+          <Route path="/Login" element={<Navigate to="/login" replace />} />
+          <Route path="/Signup" element={<Navigate to="/signup" replace />} />
+          <Route path="/Dashboard" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
